@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+{% block content %}
+    <table class="table table-striped table-dark">
+  <thead>
+    <tr>
+
+      <th scope="col">date</th>
+      <th scope="col">quantity</th>
+      <th scope="col">id</th>
+      <th scope="col">inventory_id</th>
+
+    </tr>
+  </thead>
+  <tbody>
+
+
+  {% for each in sales %}
+      <tr>
+      <td>{{ each.created_on }}</td>
+      <td>{{ each.quantity }}</td>
+      <td>{{ each.id }}</td>
+      <td>{{ each.inventory_id }}</td>
+
+      </tr>
+
+  {% endfor %}
+
+
+
+
+
+
+  </tbody>
+</table>
+
+{%endblock  %}

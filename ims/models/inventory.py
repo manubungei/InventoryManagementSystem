@@ -3,10 +3,13 @@ from app import db
 class NewInventory(db.Model):
     __tablename__ = 'new_inventories'
     id = db.Column(db.Integer, primary_key = True)
-    name = db.Column(db.String, nullable = False)
-    type = db.Column(db.String, nullable = False)
-    buying_price = db.Column(db.Float)
+    name = db.Column(db.String(40), nullable = False)
+    type = db.Column(db.String(10), nullable = False)
+    buying_price = db.Column(db.Float, nullable = False)
     selling_price = db.Column(db.Float, nullable = False)
+    sales = db.relationship('New_sale', backref = 'inventory', lazy =True)
+    stock = db.relationship("Add_stock", backref= "inventory", lazy = True)
+
 
 
 # adding inventories
@@ -25,12 +28,4 @@ class NewInventory(db.Model):
 #  Fetch records by ID
     @classmethod
     def fetch_by_id(cls,id):
-
-
-        delete_record = cls.filter_id(id=id).first()
-        if delete_record.first():
-            delete_record.delete()
-            db.session.commit()
-            return True
-        else:
-            return False
+        return cls.query.filter_by(id=id).first()

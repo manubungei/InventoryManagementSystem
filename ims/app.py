@@ -1,10 +1,7 @@
 from flask import Flask,request,render_template, redirect, url_for
 import pygal
 import psycopg2
-
-
 from flask_sqlalchemy import SQLAlchemy
-
 from config.config import Development
 
 app = Flask(__name__)
@@ -12,6 +9,8 @@ app.config.from_object(Development)
 db = SQLAlchemy(app)
 
 from models.inventory import NewInventory
+from models.new_sales import New_sale
+from models.stock import Add_stock
 
 @app.before_first_request
 def create_tables():
@@ -97,7 +96,22 @@ def index():
 def inventories():
 
     inventory = NewInventory.fetch_records()
-    print (inventory)
+    # print (inventory)
+
+
+    cursor.execute("""SELECT inventory_id, sum(quantity) as "stock"
+       FROM ((SELECT st.inventory_id, sum(stock) as "quantity"
+       FROM public.add_stock as st
+       GROUP BY inventory_id) union all
+           (SELECT sa.inventory_id, - sum(quantity) as "quantity"
+       FROM public.new_sales as sa
+       GROUP BY inventory_id) 
+           ) stsa
+       GROUP BY inventory_id
+       ORDER BY inventory_id;""")
+
+    available_stock = cursor.fetchall()
+
 
 
     if request.method == 'POST':
@@ -117,7 +131,7 @@ def inventories():
         ####
 
 
-    return render_template('inventories.html', inventory = inventory)
+    return render_template('inventories.html', inventory = inventory, available_stock=available_stock)
 
 
 
@@ -139,34 +153,88 @@ def inventories():
 #
 
 # Deleting an Item
-@app.route('/inventory/delete/<int:id>', methods=["GET","POST"])
+@app.route('/inventories/delete/<int:id>', methods=["GET","POST"])
 def deleteInventory(id):
-
-    delete_inventory = NewInventory.filter_by_id(id)
+    delete_inventory = NewInventory.fetch_by_id(id)
     print('Record deleted successfully')
     if delete_inventory:
         db.session.delete(delete_inventory)
         db.session.commit()
 
-        return redirect(url_for('inventory'))
+        return redirect(url_for('inventories'))
     else:
         print('Record not found')
-        return redirect(url_for('inventory'))
+        return redirect(url_for('inventories'))
 
 
-# @app.route('/make_sale/<id>')
-# def make_sale(id):
-#     if request.method == 'POST':
-#         quantity = request.form['quantity']
-#         # push to db
-#
-#         inv_id = id
-#         quantity = request.form['quantity']
-#         new_sale = NewSale(id=inv_id, quantity=quantity)
-#         db.session.add(new_sale)
-#         db.session.commit()
-#
-#     return redirect('inventory')
+
+
+
+@app.route('/new_sale/<int:id>',methods=["GET","POST"])
+def new_sale(id):
+
+    if request.method == 'POST':
+
+        # quantity = request.form['quantity']
+
+#         push to db
+
+        quantity = request.form['quantity']
+        new_sale = New_sale(inventory_id=id, quantity=quantity)
+        db.session.add(new_sale)
+        db.session.commit()
+
+    return  redirect(url_for('inventories'))
+
+
+@app.route('/add_stock/<int:id>', methods=["GET","POST"])
+def add_stock(id):
+
+    if request.method == 'POST':
+
+        quantity = request.form['quantity']
+        add_stock = Add_stock(inventory_id=id, stock=quantity)
+
+
+        db.session.add(add_stock)
+        db.session.commit()
+
+
+
+    return  redirect(url_for("inventories"))
+
+
+@app.route('/view_sales/<int:id>', methods= ['POST','GET'])
+
+def view_sales(id):
+    sales = New_sale.query.filter_by(inventory_id=id).all()
+
+    return render_template('views.html', sales=sales)
+
+
+
+@app.route('/inventories/update/<int:id>', methods = ['POST','GET'])
+def update(id):
+    record = NewInventory.fetch_by_id(id)
+
+    if request.method == 'POST':
+
+        record.name = request.form['name']
+        record.type = request.form['type']
+        record.buying_price = request.form['buying_price']
+        record.selling_price = request.form['selling_price']
+
+
+        db.session.commit()
+
+        return redirect(url_for('inventories'))
+
+
+
+
+
+
+
 
 
 if __name__ == '__main__':
